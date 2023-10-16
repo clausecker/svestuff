@@ -12,12 +12,13 @@
 	.quad	1000000000000,     10000000000000, 100000000000000, 1000000000000000
 
 	.text
-	.type	strtol, %function
-	.globl	strtol
+	.type	mystrtol, %function
+	.globl	mystrtol
 	// x0: str
 	// x1: endptr
 	// x2: base
-strtol:	sub	sp, sp, #16
+mystrtol:
+	sub	sp, sp, #16
 	mov	x3, sp
 	cmp	x1, #0				// was an endptr provided?
 	csel	x1, x1, x3, ne			// if not, redirect write to dummy stack slot
@@ -93,12 +94,14 @@ strtol:	sub	sp, sp, #16
 	incp	x3, p4.b			// advance to first non-digit
 	add	x0, x0, x3			// compute end pointer
 	str	x0, [x1]			// *endptr = end
+	cmp	w4, #'-'
+	cneg	x0, x5, eq			// result = sign == '-' ? -result : result
 	add	sp, sp, #16
 	ret
 
 	// decoding error: no valid digits found
 .Lfail:	str	x0, [x1]			// *endptr = buf
-	mov	x0, #0				// return zero
+	mov	x0, #0				// result = 0
 	add	sp, sp, #16
 	ret
-	.size	strtol, .-strtol
+	.size	mystrtol, .-mystrtol

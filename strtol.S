@@ -66,11 +66,11 @@ mystrtol:
 	// step 3: extract digits
 0:	mov	x5, #0				// result accumulator
 	sub	z0.h, z0.h, #'0'		// convert digits to decimal
-1:	cmphi	p3.h, p2/z, z0.h, #9		// which of these are not digits?
+	cmphi	p3.h, p2/z, z0.h, #9		// which of these are not digits?
 	brkbs	p4.b, p2/z, p3.b		// longest all-digit prefix
 	beq	.Lfail				// fail if no digits found
 
-	cntp	x6, p1, p4.b			// number of digits found
+1:	cntp	x6, p1, p4.b			// number of digits found
 	ldr	x6, [x3, x6, lsl #3]		// prepare multiplication factor for accumulator
 	rev	z0.h, z0.h			// reverse digits to little-endian order
 	rev	p5.h, p4.h			// match reversed digits in predicate
@@ -91,7 +91,9 @@ mystrtol:
 	rdffr	p2.b, p8/z
 	zip1	p2.b, p2.b, p0.b
 	sub	z0.h, z0.h, #'0'		// convert digits to decimal
-	b	1b				// ... and convert again
+	cmphi	p3.h, p2/z, z0.h, #9		// which of these are not digits?
+	brkbs	p4.b, p2/z, p3.b		// longest all-digit prefix
+	bne	1b				// and if any digits remain, convert again
 
 	// all digits extracted, write end pointer and return result
 0:	brkb	p4.b, p1/z, p3.b		// prefix until first non-digit

@@ -25,11 +25,8 @@ mystrtol:
 	csel	x1, x1, x3, ne			// if not, redirect write to dummy stack slot
 	setffr
 	ptrue	p1.h, vl16			// can process up to 16 digits per iteration
-	ptrue	p8.b, vl16			// same mask, but in bytes for rdffer
-	pfalse	p0.b
 	ldff1b	z0.h, p1/z, [x0]		// load string head
-	rdffr	p2.b, p8/z			// list of valid elements in z0
-	zip1	p2.b, p2.b, p0.b		// converted to halfwords
+	rdffr	p2.b, p1/z			// list of valid elements in z0
 	mov	x8, #0				// offset of current load from x0
 
 	// step 0: load constants
@@ -56,12 +53,11 @@ mystrtol:
 	bics	p2.b, p1/z, p2.b, p4.b		// mark sign bit as inactive
 	bne	0f				// any active bytes left?
 
-	rdffr	p2.b, p8/z			// list of valid elements from previous load
+	rdffr	p2.b, p1/z			// list of valid elements from previous load
 	setffr
 	incp	x8, p2.b			// advance pointer by that many bytes
 	ldff1b	z0.h, p1/z, [x0, x8]		// redo the load
-	rdffr	p2.b, p8/z			// get new active element mask
-	zip1	p2.b, p2.b, p0.b		// converted to halfwords
+	rdffr	p2.b, p1/z			// get new active element mask
 
 	// step 3: extract digits
 0:	mov	x5, #0				// result accumulator
@@ -84,12 +80,11 @@ mystrtol:
 	bics	p2.b, p1/z, p2.b, p4.b		// mark digits as inactive
 	bne	0f				// reach end of digits?
 
-	rdffr	p2.b, p8/z
+	rdffr	p2.b, p1/z
 	setffr
 	incp	x8, p2.b			// advance pointer past bytes consumed
 	ldff1b	z0.h, p1/z, [x0, x8]		// load additional digits
-	rdffr	p2.b, p8/z
-	zip1	p2.b, p2.b, p0.b
+	rdffr	p2.b, p1/z
 	sub	z0.h, z0.h, #'0'		// convert digits to decimal
 	cmphi	p3.h, p2/z, z0.h, #9		// which of these are not digits?
 	brkbs	p4.b, p2/z, p3.b		// longest all-digit prefix

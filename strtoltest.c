@@ -48,6 +48,7 @@ test_mystrtol(const char *str, size_t off)
 
 	sa.sa_handler = maptestpage;
 	sa.sa_flags = SA_RESETHAND;
+	sigfillset(&sa.sa_mask);
 	res = sigaction(SIGSEGV, &sa, NULL);
 	if (res != 0) {
 		perror("sigaction");

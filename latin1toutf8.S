@@ -28,8 +28,8 @@ mylatin1_to_utf8:
 	bic	z0.s, p1/m, z0.s, z30.s	// 10FEDCBA if >0x7f, 0GFEDCBA otherwise
 	orr	z1.s, p1/m, z1.s, z31.s	// 1100001G if >0x7f, 00000000 otherwise
 
-	zip1	p2.s, p0.s, p1.s	// bit masks indicating bytes to keep
-	zip2	p3.s, p0.s, p1.s
+	zip1	p2.s, p1.s, p0.s	// bit masks indicating bytes to keep
+	zip2	p3.s, p1.s, p0.s
 	zip1	z2.s, z1.s, z0.s	// low half of UTF-8 output
 	zip2	z3.s, z1.s, z0.s	// high half of UTF-8 output
 	compact	z2.s, p2, z2.s		// discard unwanted high bytes

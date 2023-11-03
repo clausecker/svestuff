@@ -23,7 +23,7 @@ mylatin1_to_utf8:
 
 	.balign		16
 0:	vpmovzxbw	(%rsi), %zmm0		// load 64 bytes of input as halfwords
-	add		$64, %rsi		// advance to next chunk of input
+	add		$32, %rsi		// advance to next chunk of input
 
 	vpcmpnltuw	%zmm31, %zmm0, %k2	// 0x0080 <= zmm0?
 	vpsrlw		$6, %zmm0, %zmm1	// 00000000 000000HG
@@ -36,7 +36,7 @@ mylatin1_to_utf8:
 	kmovd		%k2, %ecx
 	popcnt		%ecx, %ecx		// number of 2-byte characters processed this round
 	lea		32(%rax, %rcx, 1), %rax	// advance outlen by number of bytes written
-	sub		$32, %rsi		// 64 bytes left to process?
+	sub		$32, %rdx		// 64 bytes left to process?
 	jae		0b
 
 	/* handle tail of 0--31 bytes */
@@ -54,8 +54,8 @@ mylatin1_to_utf8:
 	vpsllw		$8, %zmm0, %zmm2	// HGFEDCBA 00000000
 	vpternlogd	$0xa8, %zmm29, %zmm2, %zmm1 // 00FEDCBA 000000HG  zmm1 = (zmm1|zmm2) & 0x3f3f
 	vpaddw		%zmm28, %zmm1, %zmm0{%k2}   // 10FEDCBA 110000HG or 00000000 0GFEDCBA
-	vpblendmw	%zmm31, %zmm30, %zmm1{%k1} // 0100 fo ASCII/2byte, FFFF behind end-of-buffer
-	vpcmpnltub	%zmm27, %zmm0, %k3	// 01 if ASCII, 11 if 2 byte, 00 if behind buffer
+	vpblendmw	%zmm27, %zmm30, %zmm1{%k1} // 0100 fo ASCII/2byte, FFFF behind end-of-buffer
+	vpcmpnltub	%zmm1, %zmm0, %k3	// 01 if ASCII, 11 if 2 byte, 00 if behind buffer
 	vpcompressb	%zmm0, (%rdi, %rax, 1){%k3} // store to destination
 
 	kmovd		%k2, %ecx

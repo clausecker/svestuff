@@ -31,7 +31,7 @@ mystrncpy:
 	incp	x3, p0.b		// advance pointers
 
 	whilelo	p0.b, x3, x2
-	b.any	.Lend
+	b.none	.Lend
 
 0:	st1b	z1.b, p0, [x0, x3]	// store NUL bytes into destination
 	incp	x3, p0.b		// advance pointers

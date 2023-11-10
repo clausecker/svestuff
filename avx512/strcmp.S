@@ -1,0 +1,97 @@
+	/* strinc comparison with AVX-512 */
+
+	.text
+	.type		mystrcmp, @function
+	.globl		mystrcmp
+mystrcmp:
+	mov		%edi, %eax
+	mov		%esi, %ecx
+	and		$0x3f, %eax		# offsets from alignment
+	and		$0x3f, %ecx
+	and		$~0x3f, %rdi		# align pointers
+	and		$~0x3f, %rsi
+	mov		$-1, %rdx
+
+	/* establish invariant: eax >= ecx */
+	xor		%r10d, %r10d
+	cmp		%ecx, %eax
+	jae		0f
+	xchg		%eax, %ecx		# TODO: make this branch free
+	xchg		%rsi, %rdi
+	mov		$-1, %r10d		# remember that we swapped
+
+	/* compare and prepare heads */
+0:	shrx		%rax, %rdx, %r8		# prefix of RDI before alignment boundary
+	shrx		%rcx, %rdx, %r9		# prefix of RSI before alignment boundary
+	kmovq		%r8, %k1
+	kmovq		%r9, %k2
+	vmovdqu8	(%rsi, %rcx), %zmm1{%k2}{z}
+	vpxor		%ymm3, %ymm3, %ymm3	# zero register
+	vpcmpnequb	(%rdi, %rax), %zmm1, %k3{%k1}	# compare RDI head with RSI head
+	vpcmpequb	%zmm1, %zmm3, %k4{%k2}	# check for NUL bytes in RSI head
+	kortestq	%k3, %k4		# any mismatches or NUL bytes?
+	jnz		.Lend_in_head
+
+	sub		%rax, %rcx		# negated difference between alignments
+	sub		%rsi, %rdi		# express RDI as distance from RSI
+	add		$64, %rsi		# advance to next iteration
+
+	/* main loop unrolled twice */
+	.balign		16
+0:
+	vmovdqu8	(%rsi, %rdi), %zmm1	# RDI chunk
+	vpcmpequb	(%rsi), %zmm3, %k3	# NUL byte in RSI?
+	vpcmpnequb	(%rsi, %rcx), %zmm1, %k4 # mismatch between the chunks?
+	kortestq	%k3, %k4		# either?
+	jnz		1f			# if yes, abort loop
+
+	vmovdqu8	64(%rsi, %rdi), %zmm1	# RDI chunk
+	vpcmpequb	64(%rsi), %zmm3, %k3	# NUL byte in RSI?
+	vpcmpnequb	64(%rsi, %rcx), %zmm1, %k4 # mismatch between the chunks?
+	sub		$-128, %rsi		# advance to next iteration
+	kortestq	%k3, %k4		# either?
+	jz		0b			# if not, keep going
+
+	/* mismatch or NUL byte found */
+	sub		$64, %rsi		# undo second iteration increment
+1:	kmovq		%k3, %rax
+	kmovq		%k4, %rdx
+	neg		%ecx			# turn alignment offset positive
+	mov		%rax, %r8
+	add		%rsi, %rdi		# restore RDI
+	shl		%cl, %rax		# adjust NUL mask to chunk in ZMM1/ZMM2
+	or		%rax, %rdx		# mismatches or NUL bytes in ZMM1/ZMM2?
+	jz		1f			# if not, need to read another chunk
+
+	/* NUL in ZMM1/ZMM2 chunk */
+	sub		%rcx, %rsi		# make RSI correspond to RDI
+
+.Lfind_return_value:
+	tzcnt		%rdx, %rdx		# find mismatch/NUL
+	movzbl		(%rdi, %rdx), %eax
+	movzbl		(%rsi, %rdx), %ecx
+	sub		%ecx, %eax		# compute return value
+	xor		%r10d, %eax		# if we had swapped, negate
+	sub		%r10d, %eax
+	ret	
+
+	/* NUL in ZMM0 behind ZMM1/ZMM2 chunk */
+1:	vmovdqa64	(%rsi), %zmm1		# re-load RSI chunk
+	vpcmpnequb	(%rdi, %rcx), %zmm1, %k4 # mismatch between the chunks?
+	add		%rcx, %rdi		# make RDI correspond to RSI
+	kmovq		%k4, %rdx
+	or		%r8, %rdx		# mismatch or NUL bytes
+	jmp		.Lfind_return_value
+
+	/* NUL or mismatch found within string head */
+.Lend_in_head:
+	korq		%k3, %k4, %k4		# mismatches or NUL bytes
+	kxnorq		%k0, %k0, %k0		# k0 = -1
+	kaddq		%k0, %k4, %k3
+	kxorq		%k3, %k4, %k3		# mask of head until mismatch or NUL
+	vpcmpnequb	(%rdi, %rax), %zmm1, %k3{%k3} # redo comparison if no NUL within %k1
+	add		%rax, %rdi		# restore head pointers
+	add		%rcx, %rsi
+	korq		%k3, %k4, %k4		# mismatch or NUL bytes
+	kmovq		%k4, %rdx
+	jmp		.Lfind_return_value

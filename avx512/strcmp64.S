@@ -1,4 +1,4 @@
-	/* strinc comparison with AVX-512 */
+	/* string comparison with AVX-512 */
 
 	.text
 	.type		mystrcmp, @function
@@ -28,7 +28,7 @@ mystrcmp:
 	vmovdqu8	(%rsi, %rcx), %zmm1{%k2}{z}
 	vpxor		%ymm3, %ymm3, %ymm3	# zero register
 	vpcmpnequb	(%rdi, %rax), %zmm1, %k3{%k1}	# compare RDI head with RSI head
-	vpcmpequb	%zmm1, %zmm3, %k4{%k2}	# check for NUL bytes in RSI head
+	vpcmpeqb	%zmm1, %zmm3, %k4{%k2}	# check for NUL bytes in RSI head
 	kortestq	%k3, %k4		# any mismatches or NUL bytes?
 	jnz		.Lend_in_head
 
@@ -39,14 +39,14 @@ mystrcmp:
 	/* main loop unrolled twice */
 	.balign		16
 0:
-	vmovdqu8	(%rsi, %rdi), %zmm1	# RDI chunk
-	vpcmpequb	(%rsi), %zmm3, %k3	# NUL byte in RSI?
+	vmovdqa64	(%rsi, %rdi), %zmm1	# RDI chunk
+	vpcmpeqb	(%rsi), %zmm3, %k3	# NUL byte in RSI?
 	vpcmpnequb	(%rsi, %rcx), %zmm1, %k4 # mismatch between the chunks?
 	kortestq	%k3, %k4		# either?
 	jnz		1f			# if yes, abort loop
 
-	vmovdqu8	64(%rsi, %rdi), %zmm1	# RDI chunk
-	vpcmpequb	64(%rsi), %zmm3, %k3	# NUL byte in RSI?
+	vmovdqa64	64(%rsi, %rdi), %zmm1	# RDI chunk
+	vpcmpeqb	64(%rsi), %zmm3, %k3	# NUL byte in RSI?
 	vpcmpnequb	64(%rsi, %rcx), %zmm1, %k4 # mismatch between the chunks?
 	sub		$-128, %rsi		# advance to next iteration
 	kortestq	%k3, %k4		# either?
@@ -85,8 +85,8 @@ mystrcmp:
 
 	/* NUL or mismatch found within string head */
 .Lend_in_head:
-	korq		%k3, %k4, %k4		# mismatches or NUL bytes
 	kxnorq		%k0, %k0, %k0		# k0 = -1
+	korq		%k3, %k4, %k4		# mismatches or NUL bytes
 	kaddq		%k0, %k4, %k3
 	kxorq		%k3, %k4, %k3		# mask of head until mismatch or NUL
 	vpcmpnequb	(%rdi, %rax), %zmm1, %k3{%k3} # redo comparison if no NUL within %k1
@@ -95,3 +95,5 @@ mystrcmp:
 	korq		%k3, %k4, %k4		# mismatch or NUL bytes
 	kmovq		%k4, %rdx
 	jmp		.Lfind_return_value
+
+	.size		mystrcmp, .-mystrcmp

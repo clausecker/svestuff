@@ -96,16 +96,16 @@ static void
 test_strcmp_alignments(void)
 {
 	size_t a_off, b_off, len, pos;
-	char a[64+16+3], b[64+16+3];
+	char a[3*64+64+3], b[3*64+64+3];
 
 	memset(a, '-', sizeof(a));
 	memset(b, '-', sizeof(b));
 	a[sizeof(a) - 1] = '\0';
 	b[sizeof(b) - 1] = '\0';
 
-	for (a_off = 0; a_off < 16; a_off++)
-		for (b_off = 0; b_off < 16; b_off++)
-			for (len = 1; len <= 64; len++)
+	for (a_off = 0; a_off < 64; a_off++)
+		for (b_off = 0; b_off < 64; b_off++)
+			for (len = 1; len <= 3*64; len++)
 				for (pos = 0; pos <= len; pos++)
 					check_strcmp_alignments(a, b, a_off, b_off, len, pos);
 }

@@ -1,5 +1,8 @@
 	/* string comparison with AVX-512, using ymm registers */
 
+	.globl		strcmp
+	.set		strcmp, mystrcmp
+
 	.text
 	.type		mystrcmp, @function
 	.globl		mystrcmp

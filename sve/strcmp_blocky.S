@@ -31,7 +31,7 @@ mystrcmp:
 
 	sub	x4, x4, x3		// negated difference between alignments
 	sub	x0, x0, x1		// express second buffer as distance from the first
-	incb	x1, all			// advance to next iteration
+	add	x1, x1, x6		// advance to next iteration
 	add	x3, x4, x6		// x4 + vector length (for unrolling)
 	add	x5, x0, x6		// x0 + vector length (for unrolling)
 
@@ -49,11 +49,11 @@ mystrcmp:
 	ld1b	z2.b, p0/z, [x1, x3]	// chunk of b corresponding to z1
 	cmpeq	p3.b, p0/z, z0.b, #0	// NUL byte in b chunk?
 	cmpne	p4.b, p0/z, z1.b, z2.b	// mismatch between chunks?
-	incb	x1, all, mul #2		// advance to next iteration
+	add	x1, x1, x6, lsl #1	// advance to next iteration
 	orrs	p1.b, p0/z, p3.b, p4.b	// either?
 	b.none	0b			// if yes, abort loop
 
-	decb	x1, all			// undo second iteration increment
+	sub	x1, x1, x6		// undo second iteration increment
 1:	cmpeq	p1.b, p0/z, z1.b, #0	// NUL byte in a chunk?
 	sub	x5, x0, x4		// a - b + alignment offset
 	orrs	p4.b, p0/z, p1.b, p4.b	// NUL byte or mismatch in a chunk?
@@ -95,7 +95,7 @@ mystrcmp:
 
 	sub	x4, x3, x4		// negated difference between alignments
 	sub	x1, x1, x0		// express second buffer as distance from the first
-	incb	x0, all			// advance to next iteration
+	add	x0, x0, x6		// advance to next iteration
 	add	x3, x4, x6		// x4 + vector length (for unrolling)
 	add	x5, x1, x6		// x0 + vector length (for unrolling)
 
@@ -113,11 +113,11 @@ mystrcmp:
 	ld1b	z2.b, p0/z, [x0, x3]	// chunk of a corresponding to z1
 	cmpeq	p3.b, p0/z, z0.b, #0	// NUL byte in a chunk?
 	cmpne	p4.b, p0/z, z1.b, z2.b	// mismatch between chunks?
-	incb	x0, all, mul #2		// advance to next iteration
+	add	x0, x0, x6, lsl #1	// advance to next iteration
 	orrs	p1.b, p0/z, p3.b, p4.b	// either?
 	b.none	0b			// if yes, abort loop
 
-	decb	x0, all			// undo second iteration increment
+	sub	x0, x0, x6		// undo second iteration increment
 1:	cmpeq	p1.b, p0/z, z1.b, #0	// NUL byte in a chunk?
 	sub	x5, x1, x4		// b - a + alignment offset
 	orrs	p4.b, p0/z, p1.b, p4.b	// NUL byte or mismatch in a chunk?

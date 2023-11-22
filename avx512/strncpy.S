@@ -18,6 +18,7 @@
 	.quad		0x0000000000000000
 	.quad		0x0000000000000000
 
+	.text
 	.type		mystrncpy, @function
 	.globl		mystrncpy
 mystrncpy:
@@ -169,11 +170,12 @@ mystrncpy:
 0:	xor		%edx, %edx
 	blsmsk		%r8, %r8		# mask of bytes in ZMM0 before NUL byte
 	cmovc		%r8, %rdx		# if no NUL in ZMM0, search for NUL in second chunk
-	and		%r9, %r8		# disregard bytes before the buffer
 	kmovq		%r9, %k1		# mask of buffer bytes in first chunk
 	kmovq		%rdx, %k2		# mask for second string chunk
 	kmovq		%rax, %k3		# mask of buffer bytes in second chunk
+	kmovq		%r8, %k4		# mask of bytes in first buffer before NUL
 	kxnorq		%k0, %k0, %k0		# -1
+	vmovdqu8	%zmm0, %zmm0{%k4}{z}	# clear string head before NUL byte
 	vmovdqu8	64(%rsi), %zmm2{%k2}{z}	# load second string chunk
 	vpcmpeqb	%zmm1, %zmm2, %k4	# any NUL bytes?
 	kaddq		%k0, %k4, %k0
